@@ -5,6 +5,18 @@
 * **Status**: TODO
 * **Prototype**: TODO
 
+- [ReplaceWith specification](#replacewith-specification)
+  - [The problem](#the-problem)
+  - [Proposed `replaceWith` specification](#proposed-replacewith-specification)
+  - [Corner case: inlining is impossible](#corner-case-inlining-is-impossible)
+- [Concrete syntax suggestions](#concrete-syntax-suggestions)
+  - [Feature use-cases](#feature-use-cases)
+- [Examples](#examples)
+    - [Let ''out from nowhere'' source](#let-out-from-nowhere-source)
+    - [Argument initialization](#argument-initialization)
+    - [function with extension receiver](#function-with-extension-receiver)
+- [Current bugs \& proposals](#current-bugs--proposals)
+
 ## The problem
 
 The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests](TODO: add links), and a several blog posts (TODO: add links).
