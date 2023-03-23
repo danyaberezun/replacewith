@@ -1,13 +1,13 @@
-# ReplaceWith specification
+# Specification of ReplaceWith inspection
 
 * **Type**: TODO
 * **Author**: TODO
 * **Status**: TODO
 * **Prototype**: TODO
 
-- [ReplaceWith specification](#replacewith-specification)
+- [Specification of ReplaceWith inspection](#specification-of-replacewith-inspection)
   - [The problem](#the-problem)
-  - [Proposed `replaceWith` specification](#proposed-replacewith-specification)
+  - [Proposed specification of the ReplaceWith inspection](#proposed-specification-of-the-replacewith-inspection)
   - [Corner case: inlining is impossible](#corner-case-inlining-is-impossible)
 - [Concrete syntax suggestions](#concrete-syntax-suggestions)
   - [Feature use-cases](#feature-use-cases)
@@ -19,14 +19,18 @@
 
 ## The problem
 
-The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests](TODO: add links), and a several blog posts (TODO: add links).
+The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests](TODO: add links), and a several blog posts (TODO: add links) from users.
 Moreover, its behaviour seems to be quite unexpected in some cases.
 Thus, it's reasonable to provide a simple feature specification and fix its implementation according to the specification.
 
-## Proposed `replaceWith` specification
+## Proposed specification of the ReplaceWith inspection
 
-1. (Methods, functions, and constructors) Consider the replacement expression as a new body of the function/method/constructor/... to be replaced, then inline the call/usage.
-2. (Replace one class (name) with another). Replace old class name with new class name. During transformation check for errors? ; NB, it may leeds to errors.
+1. *Behavior for functions, methods, and constructors (FMC).* <br />
+   Consider the replacement expression as a new body of the function/method/constructor (FMC),
+   then inline on a call site. <br />
+   In case the FMC is used by name, i.e., `String::length`, TODO
+2. *Behavior for classes.* <br />
+   Replace old class name with new class name. During transformation check for errors? ; NB, it may leeds to errors.
 
 <!-- 
 2. (replace one class with another) TODO [example](https://github.com/DaniilStepanov/bbfgradle/blob/f47406356a160ac61ab788f985b37121cc2e2a2a/tmp/arrays/youTrackTests/8727.kt#L3)
@@ -36,10 +40,10 @@ Thus, it's reasonable to provide a simple feature specification and fix its impl
 Pros:
 1. *Simplicity*. The specification is quite simple, easy to describe, and, what is most important, easy to understand by users.
 2. The replacement expression is a *usual valid Kotlin code*; thus it can be analysed as any other code and checked for errors.
-3. It seems to be that at least most of the use cases should be already covered by inliner.
+3. It seems to be that most of the use-cases should be already covered by the inliner.
 
 Cons:
-1. It narrows down the problem of `replaceWith` implementation to inlining; **maybe** this is asking too much of the inliner.
+1. It narrows down the problem of `replaceWith` implementation to inlining; **maybe** this is asking too much of the inliner. *ANTON: clarify the statement*
 
 ## Corner case: inlining is impossible
 
@@ -80,6 +84,10 @@ fun test() {
 
 # Concrete syntax suggestions
 
+*ANTON: At first, I thought that there are two separate points here: the syntax and the checks thing.*
+*I'd propose to explain it more clearly.*
+*BTW, I like the idea in general. It looks like a new construction in the language, no idea if it is a problem.*
+
 1. It would be great to provide all usual checks inside an expression to be replaced with.
 Ideally, something like
 ```Kotlin
@@ -100,19 +108,21 @@ instead of
 fun foo (...) { <old_body> }
 ```
 
-2. [KT-56969 Use body of deprecated function instead of ReplaceWith()](https://youtrack.jetbrains.com/issue/KT-56969/Use-body-of-deprecated-function-instead-of-ReplaceWith)
+1. [KT-56969 Use body of deprecated function instead of ReplaceWith()](https://youtrack.jetbrains.com/issue/KT-56969/Use-body-of-deprecated-function-instead-of-ReplaceWith)
     Good point.
     It corresponds to the specification.
     But I'd prefer to use something like `$body$` here or `ReplaceWithBody()`, i.e. a successor of `ReplaceWith` .
 
-3. In case of empty expression the call should be removed.
+2. In case of empty expression the call should be removed.
     TODO: add example.
 
 ## Feature use-cases
 
 1. Update API and save old interface at least temporary.
-2. Replace one class to another.
-3. 
+2. Replace one class with another.
+3. Provide an IDE-guided way to learn a library's API by providing a deprecated API, which looks like
+   something well-known by users, i.e., like it is done with the (well-known) Flow library in
+   [kotlinx.couritines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/flow/Migration.kt)
 4. TODO (just describe a list of them without examples)
 
 
