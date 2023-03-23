@@ -9,6 +9,7 @@
   - [The problem](#the-problem)
   - [Proposed `replaceWith` specification](#proposed-replacewith-specification)
   - [Corner case: inlining is impossible](#corner-case-inlining-is-impossible)
+  - [Corner case: ''separate/conflicting'' class name and methods replacements](#corner-case-separateconflicting-class-name-and-methods-replacements)
 - [Concrete syntax suggestions](#concrete-syntax-suggestions)
   - [Feature use-cases](#feature-use-cases)
 - [Examples](#examples)
@@ -28,7 +29,7 @@ Thus, it's reasonable to provide a simple feature specification and fix its impl
 1. (Methods, functions, and constructors) Consider the replacement expression as a new body of the function/method/constructor/... to be replaced, then inline the call/usage.
 2. (Replace one class (name) with another). Replace old class name with new class name. During transformation check for errors? ; NB, it may leeds to errors.
 
-<!-- 
+<!--
 2. (replace one class with another) TODO [example](https://github.com/DaniilStepanov/bbfgradle/blob/f47406356a160ac61ab788f985b37121cc2e2a2a/tmp/arrays/youTrackTests/8727.kt#L3)
 3. (replace one class/constructor with function/method) TODO [example](https://github.com/woocommerce/woocommerce-android/blob/c60a43f0b4c13c4d2f0d1d08a115bf3c42b157b0/WooCommerce/src/main/kotlin/com/woocommerce/android/tools/SelectedSite.kt#L89)
 4. Expected IDE behaviour in case of error during transformation or when inlining is impossible: TODO -->
@@ -54,7 +55,7 @@ class X {
     private fun newFunX() {}
 }
 fun newFunX() {}
-``` 
+```
 
 The expected behaviour is to replace `x.oldFunX()` with `x.newFunX()` since `newFunX()` corresponds to `this.newFunX(`) in the usual Kotlin code.
 However, since method `newFunX` is private, inlining is impossible.
@@ -77,6 +78,21 @@ fun test() {
     x.let {it.set(it.get() as Nothing)}
 }
 ```
+
+## Corner case: ''separate/conflicting'' class name and methods replacements
+
+Simplest case
+``` Kotlin
+@Deprecated("", replaceWith = ReplaceWith("B"))
+class A () {
+    @Deprecated("", ReplaceWith("newFun()"))
+    fun oldFun() {}
+}
+
+var a = A().oldFun()
+```
+TODO: Expected behaviour?
+Should it be `B().newFun()`, `B().oldFun()`, or something else?
 
 # Concrete syntax suggestions
 
@@ -112,11 +128,11 @@ fun foo (...) { <old_body> }
 
 1. Update API and save old interface at least temporary.
 2. Replace one class to another.
-3. 
+3.
 4. TODO (just describe a list of them without examples)
 
 
-# Examples 
+# Examples
 
 ### Let ''out from nowhere'' [source](https://github.com/JetBrains/intellij-community/blob/master/plugins/kotlin/idea/tests/testData/quickfix/deprecatedSymbolUsage/argumentSideEffects/complexExpressionNotUsedSafeCall.kt)
 
@@ -139,6 +155,7 @@ fun foo() {
     getC()?.let { newFun() }
 }
 ```
+
 
 The behaviour is expected and corresponds to the specification.
 
@@ -172,7 +189,7 @@ fun foo() {
 }
 ```
 
-What do we expect? According to the proposed specification, this behaviour seems to be right: since we consider the expression as a new body of `oldFun`, inliner should call `bar` here (it may have side effects). 
+What do we expect? According to the proposed specification, this behaviour seems to be right: since we consider the expression as a new body of `oldFun`, inliner should call `bar` here (it may have side effects).
 In this particular case, there is no sense to call `bar` but then we expect the inliner to use some kind of static analysis to decide this.
 AFAIK, the inliner is not able to handle such optimization (and it is too computationally expensive).
 
@@ -219,8 +236,8 @@ $\bullet$ [KTIJ-13679 @Deprecated ReplaceWith method does not convert to a prope
 
 ``` Kotlin
 @Deprecated("Nice description here", replaceWith = ReplaceWith("isVisible = visible"))
-fun C.something(visible: Boolean)  { 
-    // Something useful here 
+fun C.something(visible: Boolean)  {
+    // Something useful here
 }
 
 class C(){ var isVisible: Boolean = false }
