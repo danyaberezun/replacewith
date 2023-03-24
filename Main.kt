@@ -282,6 +282,40 @@ val a = Old() // -> NewClass(12) // ok, works
 //======================================================================================================================
 //======================================================================================================================
 //======================================================================================================================
+
+class ABC (i:Int) {
+    @Deprecated(
+        message = "deprecated",
+        replaceWith = ReplaceWith(expression = "abcNew")
+    )
+    var abc:Int = i
+    fun plusOne () {
+        abc += 1
+    }
+    var abcNew:Int = 0
+}
+
+fun testABC() {
+    var a = ABC(1)
+    a.abc += 1
+}
+
+
+@Deprecated(
+    message = "deprecated",
+//    replaceWith = ReplaceWith(expression = "baz(v, f)"),
+    replaceWith = ReplaceWith(expression = "faz.ibaz(0, { _ -> })"),
+//    replaceWith = ReplaceWith(expression = "faz.ibaz ?. ibaz"),
+//    replaceWith = ReplaceWith(expression = "if (true) { faz.ibaz(this, ibaz) } else { println(false) }"),
+)
+fun Int.faz(faz : Int, ibaz : (Int) -> Unit) {
+    faz.ibaz(this + this, ibaz)
+}
+
+//======================================================================================================================
+//======================================================================================================================
+//======================================================================================================================
+
 @Deprecated(
     message = "deprecated",
 //    replaceWith = ReplaceWith(expression = "baz(v, f)"),
