@@ -20,19 +20,26 @@
 
 ## The problem
 
-The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests](TODO: add links), and a several blog posts (TODO: add links).
+The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests](TODO: add links), and several blog posts (TODO: add links).
 Moreover, its behaviour seems to be quite unexpected in some cases.
 Thus, it's reasonable to provide a simple feature specification and fix its implementation according to the specification.
 
 ## Proposed `replaceWith` specification
 
 1. (Methods, functions, and constructors) Consider the replacement expression as a new body of the function/method/constructor/... to be replaced, then inline the call/usage.
-2. (Replace one class (name) with another). Replace old class name with new class name. During transformation check for errors? ; NB, it may leeds to errors.
+2. (Replace one class (name) with another). Replace an old class name with a new class name. During transformation check for errors.??TODO?? NB may lead to errors. Please, see TODO-question [here](#corner-case-separateconflicting-class-name-and-methods-replacements)
+3. Variable/field replacement.
+   1. Replace with another var/field. Straightforward replacement (Of cause it is assumed that the inliner is able to distinguish get and set)
+   2. Replace with a function/method. **TODO**
+   3. Remove **TODO**
+
+TODO
+**Q: what if I what to replace (default get and/or set) a field by defining get and/or set? Is it even the case?**
 
 <!--
-2. (replace one class with another) TODO [example](https://github.com/DaniilStepanov/bbfgradle/blob/f47406356a160ac61ab788f985b37121cc2e2a2a/tmp/arrays/youTrackTests/8727.kt#L3)
-3. (replace one class/constructor with function/method) TODO [example](https://github.com/woocommerce/woocommerce-android/blob/c60a43f0b4c13c4d2f0d1d08a115bf3c42b157b0/WooCommerce/src/main/kotlin/com/woocommerce/android/tools/SelectedSite.kt#L89)
-4. Expected IDE behaviour in case of error during transformation or when inlining is impossible: TODO -->
+1. (replace one class with another) TODO [example](https://github.com/DaniilStepanov/bbfgradle/blob/f47406356a160ac61ab788f985b37121cc2e2a2a/tmp/arrays/youTrackTests/8727.kt#L3)
+2. (replace one class/constructor with function/method) TODO [example](https://github.com/woocommerce/woocommerce-android/blob/c60a43f0b4c13c4d2f0d1d08a115bf3c42b157b0/WooCommerce/src/main/kotlin/com/woocommerce/android/tools/SelectedSite.kt#L89)
+3. Expected IDE behaviour in case of error during transformation or when inlining is impossible: TODO -->
 
 Pros:
 1. *Simplicity*. The specification is quite simple, easy to describe, and, what is most important, easy to understand by users.
@@ -41,10 +48,15 @@ Pros:
 
 Cons:
 1. It narrows down the problem of `replaceWith` implementation to inlining; **maybe** this is asking too much of the inliner.
+2. The proposed `replaceWith` specification is indeed quite simple.
+But it requires user to understand how inliner works.
+This observation rises an interesting question:
+``**Does the inliner have a normal specification**?''. =)
+
 
 ## Corner case: inlining is impossible
 
-$\bullet$ Sometimes inlining are impossible. For example:
+$\bullet$ Sometimes inlining is impossible. For example:
 ``` Kotlin
 fun testT2(x: X) {
     x.o̶l̶d̶F̶u̶n̶X̶()
@@ -60,7 +72,7 @@ fun newFunX() {}
 The expected behaviour is to replace `x.oldFunX()` with `x.newFunX()` since `newFunX()` corresponds to `this.newFunX(`) in the usual Kotlin code.
 However, since method `newFunX` is private, inlining is impossible.
 
-$\bullet$ Another example:
+$\bullet$ Another example (no connection with `replaceWith`) of code when inlining is impossible:
 ``` Kotlin
 class Box<T>(private var i : T) {
     inline fun f() {
@@ -75,7 +87,7 @@ fun <T> Box<T>.c() = f()
 fun aa() : Box<*> = Box<Int>(5)
 fun test() {
     val x: Box<*> = aa()
-    x.let {it.set(it.get() as Nothing)}
+    x.let {it.set(it.get() as Nothing)} // inlining is impossible
 }
 ```
 
@@ -91,12 +103,15 @@ class A () {
 
 var a = A().oldFun()
 ```
-TODO: Expected behaviour?
+**TODO: What is the expected behaviour?**
 Should it be `B().newFun()`, `B().oldFun()`, or something else?
+
+Even more, the question is **When should we suggest class name replacement?** if it is specified with `replaceWith`.
+In my opinion, class name replacement is a distinct case but users use it, so we have to specify the behaviour clearly and its connection with ``possibly conflicting'' methods replacements. 
 
 # Concrete syntax suggestions
 
-1. It would be great to provide all usual checks inside an expression to be replaced with.
+1. It would be great to provide all the usual checks inside an expression to be replaced with.
 Ideally, something like
 ```Kotlin
 @Deprecated(
@@ -121,13 +136,13 @@ fun foo (...) { <old_body> }
     It corresponds to the specification.
     But I'd prefer to use something like `$body$` here or `ReplaceWithBody()`, i.e. a successor of `ReplaceWith` .
 
-3. In case of empty expression the call should be removed.
-    TODO: add example.
+3. In case of an empty expression, the call should be removed.
+    TODO: add an example.
 
 ## Feature use-cases
 
-1. Update API and save old interface at least temporary.
-2. Replace one class to another.
+1. Update API and save the old interface at least temporarily.
+2. Replace one class (name?) with another.
 3.
 4. TODO (just describe a list of them without examples)
 
@@ -266,7 +281,7 @@ class T: A {
 }
 ```
 
-Currently is not supported but perfectly fits to the proposed specification.
+Currently is not supported but perfectly fits the proposed specification.
 
 $\bullet$ [KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
 
