@@ -17,6 +17,14 @@
     - [Argument initialization](#argument-initialization)
     - [function with extension receiver](#function-with-extension-receiver)
 - [Current bugs \& proposals](#current-bugs--proposals)
+  - [$\\bullet$ Incorrect expression](#bullet-incorrect-expression)
+  - [$\\bullet$ KTIJ-13679 @Deprecated ReplaceWith method does not convert to a property](#bullet-ktij-13679-deprecated-replacewith-method-does-not-convert-to-a-property)
+  - [$\\bullet$ KTIJ-16495 Support `ReplaceWith` for constructor delegation call](#bullet-ktij-16495-support-replacewith-for-constructor-delegation-call)
+  - [$\\bullet$ KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors)
+  - [$\\bullet$ KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-1)
+  - [$\\bullet$ typealiases](#bullet-typealiases)
+  - [$\\bullet$ KTIJ-11679 ReplaceWith replacing method call to property set ends up removing the line of code](#bullet-ktij-11679-replacewith-replacing-method-call-to-property-set-ends-up-removing-the-line-of-code)
+  - [$\\bullet$ (TODO: find the example source)](#bullet-todo-find-the-example-source)
 
 ## The problem
 
@@ -28,10 +36,11 @@ Thus, it's reasonable to provide a simple feature specification and fix its impl
 
 1. (Methods, functions, and constructors) Consider the replacement expression as a new body of the function/method/constructor/... to be replaced, then inline the call/usage.
 2. (Replace one class (name) with another). Replace an old class name with a new class name. During transformation check for errors.??TODO?? NB may lead to errors. Please, see TODO-question [here](#corner-case-separateconflicting-class-name-and-methods-replacements)
-3. Variable/field replacement.
-   1. Replace with another var/field. Straightforward replacement (Of cause it is assumed that the inliner is able to distinguish get and set)
-   2. Replace with a function/method. **TODO**
-   3. Remove **TODO**
+3. Property/variable/field replacement.
+   1. Replace with another property/var/field. Straightforward replacement (Of cause it is assumed that the inliner is able to distinguish get and set).
+   2. get and/or set replacement. Straightforward, same as #1.
+   Also, see [current bug](#bullet-todo-find-the-example-source)
+   3. **TODO**: Any other cases?
 
 TODO
 **Q: what if I what to replace (default get and/or set) a field by defining get and/or set? Is it even the case?**
@@ -230,7 +239,7 @@ According to the proposed specification both `this.bar()` and `bar()` can be use
 
 # Current bugs \& proposals
 
-$\bullet$ Incorrect expression
+## $\bullet$ Incorrect expression
 
 In case of an incorrect expression or any other fail `replaceWith` just removes the expression to be replaced.
 
@@ -247,7 +256,7 @@ fun testF1 () {}
 
 Expected behaviour could be to show the error in `replaceWith` expression and either perform no replacements while the expression is not error-free or provide some kind of error during the replacement.
 
-$\bullet$ [KTIJ-13679 @Deprecated ReplaceWith method does not convert to a property](https://youtrack.jetbrains.com/issue/KTIJ-13679/Deprecated-ReplaceWith-method-does-not-convert-to-a-property)
+## $\bullet$ [KTIJ-13679 @Deprecated ReplaceWith method does not convert to a property](https://youtrack.jetbrains.com/issue/KTIJ-13679/Deprecated-ReplaceWith-method-does-not-convert-to-a-property)
 
 ``` Kotlin
 @Deprecated("Nice description here", replaceWith = ReplaceWith("isVisible = visible"))
@@ -267,7 +276,7 @@ C()
 
 The proposed specification covers this case.
 
-$\bullet$ [KTIJ-16495 Support `ReplaceWith` for constructor delegation call](https://youtrack.jetbrains.com/issue/KTIJ-16495/Support-ReplaceWith-for-constructor-delegation-call)
+## $\bullet$ [KTIJ-16495 Support `ReplaceWith` for constructor delegation call](https://youtrack.jetbrains.com/issue/KTIJ-16495/Support-ReplaceWith-for-constructor-delegation-call)
 
 ``` Kotlin
 open class A(val s: String, val i: () -> Int, val i2: Int) {
@@ -283,14 +292,14 @@ class T: A {
 
 Currently is not supported but perfectly fits the proposed specification.
 
-$\bullet$ [KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
+## $\bullet$ [KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
 
 Doesn't work now but the expected behaviour corresponds to the proposed specification.
 
-$\bullet$ [KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
+## $\bullet$ [KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
 
 
-$\bullet$ typealiases
+## $\bullet$ typealiases
 
 ``` Kotlin
 //======================================================================================================================
@@ -305,7 +314,7 @@ val a = Old() // -> NewClass(12) // ok, works
 //======================================================================================================================
 ```
 
-$\bullet$ [KTIJ-11679 ReplaceWith replacing method call to property set ends up removing the line of code](https://youtrack.jetbrains.com/issue/KTIJ-11679/ReplaceWith-replacing-method-call-to-property-set-ends-up-removing-the-line-of-code)
+## $\bullet$ [KTIJ-11679 ReplaceWith replacing method call to property set ends up removing the line of code](https://youtrack.jetbrains.com/issue/KTIJ-11679/ReplaceWith-replacing-method-call-to-property-set-ends-up-removing-the-line-of-code)
 
 ``` Kotlin
 @Deprecated("", ReplaceWith("new = value"))
@@ -318,3 +327,35 @@ fun aFunction() {
     1.old(0) // Quick-fix me
 }
 ```
+
+## $\bullet$ (TODO: find the example source)
+
+``` Kotlin 
+class C {
+    var property: String
+        @Deprecated(
+            "Use getter accessor method instead.",
+            level = DeprecationLevel.WARNING,
+            replaceWith = ReplaceWith("function()")
+        )
+        get() = function()
+        @Deprecated(
+            "Use setter accessor method instead.",
+            level = DeprecationLevel.WARNING,
+            replaceWith = ReplaceWith("function(value)")
+        )
+        set(value) {
+            function(value)
+        }
+
+    fun function() : String = TODO()
+    fun function(name: String): Unit = TODO()
+}
+fun f(c: C) {
+    c.property // -> c.function ()
+    c.property = c.property // -> c.function (c.function())
+}
+```
+
+Doesn't work now.
+But it should, and it corresponds to the specification.
