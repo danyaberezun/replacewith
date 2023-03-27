@@ -111,7 +111,8 @@ fun <T> Box<T>.c() = f()
 fun aa() : Box<*> = Box<Int>(5)
 fun test() {
     val x: Box<*> = aa()
-    x.let {it.set(it.get() as Nothing)} // inlining is impossible
+    x.f() // inlining is impossible
+    // x.let {it.set(it.get() as Nothing)}
 }
 ```
 
