@@ -51,26 +51,26 @@ Thus, it's reasonable to provide a simple feature specification and fix its impl
     Consider the replacement expression as a new body of the function/method/constructor (FMC), then inline on a call site.
     + In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as a shortcut for a call `A::f(<args>)` where `args` are the same as in FMC call.
 2. *Behaviour for classes.* <br />
-    First, it is assumed that in case of classes replacing one class name with another existing class only is possible.
-    The expected behaviour is just to replace old class name with new class name keeping the context (class paths).
-    Constructors are assumed to be also ReplacedWith new class constructors by replacing the class name only.
-    NB, this case is error prone.
+    First, it is assumed that in the case of classes replacing one class name with another existing class only is possible.
+    The expected behaviour is just to replace the old class name with a new class name keeping the context (class paths).
+    Constructors are assumed to also be ReplacedWith new class constructors by replacing the class name only.
+    NB, this case is error-prone.
 3. *Property/variable/field replacement.* <br />
    1. *Replace with another property/var/field.* <br />
     Straightforward replacement (Of cause it is assumed that the inliner is able to distinguish `get` and `set`).
    2. *`get` and/or `set` replacement.* <br />
-    Straightforward, same as #1.
-    Also, see [current bug](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-2)
+    Straightforward, the same as #1.
+    Also, see [a current bug](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-2)
 
 ### Pros:
 1. *Simplicity*. The specification is quite simple, easy to describe, and, what is most important, easy to understand by users.
 2. The replacement expression is a *usual valid Kotlin code*; thus it can be analysed as any other code and checked for errors.
-3. It seems to be that most of the use-cases should be already covered by the inliner.
+3. It seems to be that most of the use cases should be already covered by the inliner.
 
 ### Cons:
 1. It narrows down the problem of `replaceWith` implementation to inlining; **maybe** this is asking too much of the inliner.
 2. The proposed `replaceWith` specification is indeed quite simple.
-But it requires user to understand how inliner works.
+But it requires a user to understand how inliner works.
 This observation rises an interesting question:
 ``**Does the inliner have a normal specification**?''
 
@@ -128,16 +128,16 @@ class A () {
 var a = A̶().o̶l̶d̶F̶u̶n̶()
 ```
 
-In the current proposal it is assumed that these two deprecations are two separate inspections.
-Thus, no conflict here, it is controlled by user which scenario to choose.
+In the current proposal, it is assumed that these two deprecations are two separate inspections.
+Thus, no conflict here, it is controlled by the user which scenario to choose.
 Scenarios:
-1. First replace `oldFun` with `newFun`, then replace class name getting as the result `B.newFun()`
+1. First, replace `oldFun` with `newFun`, then replace class name getting as the result `B.newFun()`
 2. Replace class name `A` with `B` getting as the result `A.oldFun()`. The case is error prone as well as class name replacement in general.
 
 # Concrete syntax suggestions
 
-1. ReplaceWith expression analysis. It would be be great to provide syntax highlighting and code analysis (all usual inspections and errors) for ReplaceWith expression as for any other code.
-2. I suggest (if it is possible) to redesign the concrete syntax by introducing explicit scope instead of expression. I.e. I'd prefer something like
+1. ReplaceWith expression analysis. It would be great to provide syntax highlighting and code analysis (all usual inspections and errors) for ReplaceWith expression as for any other code.
+2. I suggest (if it is possible) redesigning the concrete syntax by introducing explicit scope instead of expression. I.e. I'd prefer something like
 ```Kotlin
 @Deprecated(
     message = "deprecated",
@@ -155,10 +155,10 @@ instead of
 )
 fun foo (...) { <old_body> }
 ```
-First, it's more clear than current syntax. Second, I assume if it is possible to make a scope a part of AST (PSI) then the previous point will be supported ``for free''.
+First, it's more clear than the current syntax. Second, I assume if it is possible to make a scope a part of AST (PSI) then the previous point will be supported ``for free''.
 
 3. [KT-56969 Use body of deprecated function instead of ReplaceWith()](https://youtrack.jetbrains.com/issue/KT-56969/Use-body-of-deprecated-function-instead-of-ReplaceWith) <br/>
-    The issue contains a special case of the ReplaceWith usage when deprecated methods body and ReplaceWith expressions are identical.
+    The issue contains a special case of the ReplaceWith usage when the body of a deprecated method and ReplaceWith expression are identical.
     It looks like just forcing the inlining.
     I guess it can be supported by either introducing `$body$` to refer to the existing body or `ReplaceWithBody()`, i.e. a successor of `ReplaceWith`.
 4. In case of an empty ReplaceWith expression (or new code scope is empty, or something like `ReplaceWithRemove()` depending on concrete syntax), the call should be removed.
@@ -382,12 +382,12 @@ But it should, and it corresponds to the specification.
 
 # Discussion
 
-1. Should ReplaceWith replace constructors when replacing class name?
+1. Should ReplaceWith replace constructors when replacing the class name?
 2. Even more, the question is **When should we suggest class name replacement?** if it is specified with `replaceWith`. <br/>
     In my opinion, class name replacement is a distinct case but users use it, so we have to specify the behaviour clearly and its connection with ``possibly conflicting'' methods replacements or even lead to errors.
-3. What is the expected IDE behaviour when ReplaceWith leeds to an error (in the resulting code)?
-    What if replace all gets errors in some cases?
-4. Сan we provide an analysis that checks the correctness of a potential substitution? For example, show an error at the location of concrete ReplaceWith definition if any its usage would result in an error.
-5. Connection between different deprecations.
+3. What is the expected IDE behaviour when ReplaceWith leads to an error (in the resulting code)?
+    What if replacing all get errors in some cases?
+4. Can we provide an analysis that checks the correctness of a potential substitution? For example, show an error at the location of concrete ReplaceWith definition if any of its usages would result in an error.
+5. The connection between different deprecations.
     Consider, for example, again a [corner case: ''separate/conflicting'' class name and methods replacements](#corner-case-separateconflicting-class-name-and-methods-replacements) or [feature use-case \#3](#feature-use-cases).
-    Could it be the case to provide a set of deprecations for the class and all its methods and properties in order to define fully automatic way to replace the class and all its usages?
+    Could it be the case to provide a set of deprecations for the class and all its methods and properties in order to define a fully automatic way to replace the class and all its usage?
