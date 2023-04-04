@@ -35,6 +35,7 @@
 - [Possible Future Work](#possible-future-work)
   - [`ReplaceWith` ancestors for specific use-cases](#replacewith-ancestors-for-specific-use-cases)
   - [`ReplaceWith` body analysis and Concrete syntax suggestion](#replacewith-body-analysis-and-concrete-syntax-suggestion)
+- [Related work](#related-work)
 
 # The story
 
@@ -542,3 +543,15 @@ fun foo (...) { <old_body> }
 ```
 
 First, it's more clear than the current syntax. Second, I assume if it is possible to make a scope a part of AST (PSI) then the previous point will be supported ``for free''.
+
+# Related work
+
+One can think of `ReplaceWith` inspection as a lightweight incremental way to evolve APIs.
+It is less expressive and powerful than a full-fledged migration tool.
+Thus, any comparison with such tools has no sense at all.
+Thus, one can either implement a complete migration tool or emulate `ReplaceWith` functionality with a set of custom IDE inspections.
+Both approaches are much more difficult and error-prone.
+
+In $\texttt{Rider}$ similar to `ReplaceWith` functionality can be implemented with `[CodeTemplate]` attribute: (c) </br>
+*As the API author, you need to mark the obsolete type or member with the [CodeTemplate] attribute from JetBrains.Annotations where you can specify a search pattern to match the old API and a replacement pattern for it.*
+Theoretically, the approach seems to be more powerful but at the same time more complex, less transparent, and not too far from custom inspection implementation.
