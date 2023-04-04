@@ -552,6 +552,6 @@ Thus, any comparison with such tools has no sense at all.
 Thus, one can either implement a complete migration tool or emulate `ReplaceWith` functionality with a set of custom IDE inspections.
 Both approaches are much more difficult and error-prone.
 
-In $\texttt{Rider}$ similar to `ReplaceWith` functionality can be implemented with `[CodeTemplate]` attribute: (c) </br>
+In $\texttt{Rider}$ similar to `ReplaceWith` functionality [can be implemented with `[CodeTemplate]` attribute](https://www.jetbrains.com/help/rider/Code_Analysis__Find_and_Update_Obsolete_APIs.html): (c) </br>
 *As the API author, you need to mark the obsolete type or member with the [CodeTemplate] attribute from JetBrains.Annotations where you can specify a search pattern to match the old API and a replacement pattern for it.*
 Theoretically, the approach seems to be more powerful but at the same time more complex, less transparent, and not too far from custom inspection implementation.
