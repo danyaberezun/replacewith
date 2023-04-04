@@ -6,43 +6,57 @@
 * **Prototype**: TODO
 
 - [`ReplaceWith` inspection specification](#replacewith-inspection-specification)
-  - [The problem](#the-problem)
+- [The story](#the-story)
   - [Feature use-cases](#feature-use-cases)
-  - [Proposed `replaceWith` inspection specification](#proposed-replacewith-inspection-specification)
+- [The problem](#the-problem)
+- [Proposed `replaceWith` inspection specification](#proposed-replacewith-inspection-specification)
     - [Pros:](#pros)
     - [Cons:](#cons)
-  - [Corner case: inlining is impossible](#corner-case-inlining-is-impossible)
-  - [Corner case: ''separate/conflicting'' class name and methods replacements](#corner-case-separateconflicting-class-name-and-methods-replacements)
-  - [Corner case: replace class name and constructors](#corner-case-replace-class-name-and-constructors)
-  - [Corner case: property and method name collision](#corner-case-property-and-method-name-collision)
-- [`ReplaceWith` expression analysis, inspections, and IDE integration](#replacewith-expression-analysis-inspections-and-ide-integration)
 - [Examples](#examples)
-    - [Let ''out from nowhere'' source](#let-out-from-nowhere-source)
+    - [Let ''out from nowhere''](#let-out-from-nowhere)
     - [Argument initialization](#argument-initialization)
     - [Function with extension receiver](#function-with-extension-receiver)
+    - [Replace function call with an import](#replace-function-call-with-an-import)
+- [Corner cases](#corner-cases)
+  - [Corner case: inlining is impossible](#corner-case-inlining-is-impossible)
+  - [Corner case: ''separate/conflicting'' class name and methods replacements](#corner-case-separateconflicting-class-name-and-methods-replacements)
+  - [Corner case: replace the class name and constructors](#corner-case-replace-the-class-name-and-constructors)
+  - [Corner case: property and method name collision](#corner-case-property-and-method-name-collision)
+- [`ReplaceWith` expression analysis, inspections, and IDE integration](#replacewith-expression-analysis-inspections-and-ide-integration)
 - [Current bugs \& proposals](#current-bugs--proposals)
   - [$\\bullet$ Incorrect expression](#bullet-incorrect-expression)
   - [$\\bullet$ KTIJ-13679 @Deprecated ReplaceWith method does not convert to a property](#bullet-ktij-13679-deprecated-replacewith-method-does-not-convert-to-a-property)
   - [$\\bullet$ KTIJ-16495 Support `ReplaceWith` for constructor delegation call](#bullet-ktij-16495-support-replacewith-for-constructor-delegation-call)
   - [$\\bullet$ KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors)
-  - [$\\bullet$ KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-1)
   - [$\\bullet$ typealiases](#bullet-typealiases)
   - [$\\bullet$ KTIJ-11679 ReplaceWith replacing method call to property set ends up removing the line of code](#bullet-ktij-11679-replacewith-replacing-method-call-to-property-set-ends-up-removing-the-line-of-code)
-  - [$\\bullet$ KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-2)
+  - [$\\bullet$ KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-1)
 - [Discussion](#discussion)
 - [Possible Future Work](#possible-future-work)
-  - [ReplaceWith body analysis and Concrete syntax suggestion](#replacewith-body-analysis-and-concrete-syntax-suggestion)
+  - [`ReplaceWith` ancestors for specific use-cases](#replacewith-ancestors-for-specific-use-cases)
+  - [`ReplaceWith` body analysis and Concrete syntax suggestion](#replacewith-body-analysis-and-concrete-syntax-suggestion)
 
-## The problem
+# The story
 
-The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests]([id-com-tests](https://github.com/JetBrains/intellij-community/tree/master/plugins/kotlin/idea/tests/testData/quickfix/deprecatedSymbolUsage)), and several blog posts ([1](https://dev.to/mreichelt/the-hidden-kotlin-gem-you-didn-t-think-you-ll-love-deprecations-with-replacewith-3blo),
-[2](https://www.baeldung.com/kotlin/deprecation),
-[3](https://todd.ginsberg.com/post/kotlin/deprecation/),
-[4](https://readyset.build/kotlin-deprecation-goodies-a35a397aa9b5)) from users.
-Moreover, its behaviour seems to be quite unexpected in some cases.
-Thus, it's reasonable to provide a simple feature specification and fix its implementation according to the specification.
+As a project or library evolves, its API may significantly change.
+`@Deprecated` annotation is widely used to encourage users to utilize the updated API or even more restrict some outdated API parts and force users to utilize the updated API.
+In order to minimize overheads and speed up the migration process in $\texttt{Kotlin}$ `@Deprecated` annotations may be equipped with `ReplaceWith` annotation property which defines a code fragment that shall be used instead of the deprecated entity.
+The simplest example is as follows.
+
+``` Kotlin
+@Deprecated("Use f() instead", replaceWith = ReplaceWith("f()"))
+fun g(): Int = TODO()
+
+fun h () {
+    g̶() // <- point of interest
+}
+```
+
+IDE proposes to apply a quick-fix and replace the call of outdated function `g̶()` with `f()`.
 
 ## Feature use-cases
+
+The most common ways of utilizing `ReplaceWith` are the following
 
 1. Update API and save the old interface at least temporarily.
 2. Replace one class (name) with another.
@@ -50,14 +64,22 @@ Thus, it's reasonable to provide a simple feature specification and fix its impl
    [kotlinx.couritines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/flow/Migration.kt).
 4. Having some Java library, one has implemented a Kotlin-idiomatic API for it; in this case, `ReplaceWith` can be used to force and/or help Kotlin users to use this API.
 
-## Proposed `replaceWith` inspection specification
+# The problem
+
+The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests]([id-com-tests](https://github.com/JetBrains/intellij-community/tree/master/plugins/kotlin/idea/tests/testData/quickfix/deprecatedSymbolUsage)), and several blog posts ([1](https://dev.to/mreichelt/the-hidden-kotlin-gem-you-didn-t-think-you-ll-love-deprecations-with-replacewith-3blo),
+[2](https://www.baeldung.com/kotlin/deprecation),
+[3](https://todd.ginsberg.com/post/kotlin/deprecation/),
+[4](https://readyset.build/kotlin-deprecation-goodies-a35a397aa9b5)) from users.
+Moreover, its behaviour seems to be quite unexpected in some cases ([see below](#current-bugs--proposals)).
+Thus, it's reasonable to provide a simple feature specification and fix its implementation according to the specification.
+
+# Proposed `replaceWith` inspection specification
 
 1. *Behaviour for functions, methods, and constructors (FMC).* <br />
     Consider the replacement expression as a new body of the function/method/constructor (FMC), then inline on a call site.
     + In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as a shortcut for a call `A::f(<args>)` where `args` are the same as in FMC call.
-    + This also means that all arguments (by name), `this` and as well as access to properties and methods through it are available in the `ReplaceWith` expression just like in a usual method's body.
+    + This also means that all arguments (by name), `this` and as well as access to properties and methods through it are available inside the `ReplaceWith` expression just like in a usual method's body.
     + Access to all identities from new `ReplaceWith` imports is the same as if they were imported in the standard way.
-    Nevertheless, it is recommended to access all identities from these imports with the full path.
 2. *Behaviour for classes.* <br />
     First, it is assumed that in the case of classes replacing one class name with another existing class only is possible.
     The expected behaviour is just to replace the old class name with a new class name keeping the context (class paths).
@@ -69,7 +91,6 @@ Thus, it's reasonable to provide a simple feature specification and fix its impl
    2. *`get` and/or `set` replacement.* <br />
     Straightforward, the same as #1.
     Also, see [a current bug](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-2)
-4. typealiases TODO: как описать?!?
 
 ### Pros:
 1. *Simplicity*. The specification is quite simple, easy to describe, and, what is most important, easy to understand by users.
@@ -83,6 +104,106 @@ But it requires a user to understand how inliner works.
 This observation rises an interesting question:
 ``**Does the inliner have a normal specification**?''
 
+# Examples
+
+For the sake of clarity in this section we illustrate `ReplaceWith` usage by the set of examples.
+
+### [Let ''out from nowhere''](https://github.com/JetBrains/intellij-community/blob/master/plugins/kotlin/idea/tests/testData/quickfix/deprecatedSymbolUsage/argumentSideEffects/complexExpressionNotUsedSafeCall.kt)
+
+``` Kotlin
+class C {
+    @Deprecated("", ReplaceWith("newFun()"))
+    fun oldFun() {
+        newFun()
+    }
+}
+
+fun newFun() { TODO () }
+
+fun getC(): C? = null
+
+fun foo() {
+    getC()?.o̶l̶d̶F̶u̶n̶() // <- point of interest
+}
+```
+
+Since we use the safe-call operator `.?` here, after the replacement of `oldFun` call we have to call `newFun` if and only if the result of `getC` is not `null`.
+Unlike `oldFun`, `newFun` is not a member of class `C`.
+Thus, straightforward name replacement is impossible.
+Instead, `ReplaceWith` inspection introduces a `let`-scope and results in `getC()?.let { newFun() }`.
+
+Current behaviour and the expected behaviour coincide and correspond to the proposed specification.
+
+### Argument initialization
+
+``` Kotlin
+package ppp
+fun bar(): Int = 0
+@Deprecated("", ReplaceWith("newFun()"))
+fun oldFun(p: Int = ppp.bar()) {
+    newFun()
+}
+fun newFun(){}
+fun foo() {
+    o̶l̶d̶F̶u̶n̶() // <- point of interest
+}
+```
+
+According to the proposed specification during replacement arguments initialization should be preserved. I.e.
+```
+    bar()
+    newFun()
+```
+Explanation: since we consider the expression as a new body of `oldFun`, inliner should call `bar` here (it may have side effects).
+In this particular case, there is no sense to call `bar` but then we expect the inliner to use some kind of static analysis to decide this.
+AFAIK, the inliner is not able to handle such optimization (and it is too computationally expensive).
+
+Current behaviour and the expected behaviour coincide and correspond to the proposed specification.
+
+### Function with extension receiver
+
+``` Kotlin
+fun test() {
+    KotlinAPI().f̶o̶o̶() // <- point of interest
+}
+
+class KotlinAPI {
+    fun bar() { TODO () }
+}
+
+fun bar() { TODO () }
+
+@Deprecated(
+    message = "deprecated",
+    replaceWith = ReplaceWith(expression = "this.bar()") // <- point of interest
+)
+fun KotlinAPI.foo() { TODO () }
+```
+
+No matter if `this.bar()`, `this.bar`, `bar()`, or `bar` is used in the `ReplaceWith` expression, it is expected that `KotlinAPI().f̶o̶o̶()` will be replaced with `KotlinAPI().bar()`.
+This behaviour corresponds to the proposed specification.
+
+Current behaviour works as expected with `this.bar()` and `bar()`
+and just removes function call in case of `this.bar` and `bar`.
+
+### Replace function call with an import
+
+``` Kotlin
+object Math {
+    @Deprecated("replace", ReplaceWith("kotlin.math.cos(x)", "kotlin.math.cos"))
+    fun cos(x: Double): Double = kotlin.math.cos(x)
+}
+
+val test = Math.c̶o̶s̶(kotlin.math.PI) // <- point of interest
+```
+
+As a of the replacement,  `import kotlin.math.cos` should be added to the list of file imports while the `Math.cos(kotlin.math.PI)` call should be replaced with `cos(kotlin.math.PI)`.
+
+Current behaviour and the expected behaviour coincide and correspond to the proposed specification.
+
+# Corner cases
+
+The section contains a description of some corner cases.
 
 ## Corner case: inlining is impossible
 
@@ -136,7 +257,7 @@ Simplest case
 @Deprecated("", replaceWith = ReplaceWith("B"))
 class A () {
     @Deprecated("", ReplaceWith("newFun()"))
-    fun oldFun() {}
+    fun oldFun() { TODO () }
 }
 
 var a = A̶().o̶l̶d̶F̶u̶n̶() // <- point of interest
@@ -148,9 +269,33 @@ Scenarios:
 1. First, replace `oldFun` with `newFun`, then replace class name getting as the result `B.newFun()`
 2. Replace class name `A` with `B` getting as the result `A.oldFun()`. The case is error prone as well as class name replacement in general.
 
-## Corner case: replace class name and constructors
+## Corner case: replace the class name and constructors
 
-TODO
+``` Kotlin
+@Deprecated("", ReplaceWith("A"))
+class OldClass1 @Deprecated("", ReplaceWith("B(0)")) constructor()
+
+val a = O̶l̶d̶C̶l̶a̶s̶s̶1̶() // <- point of interest #1
+
+@Deprecated("", ReplaceWith("A"))
+class OldClass2 constructor(<...>) { TODO () }
+
+val a = O̶l̶d̶C̶l̶a̶s̶s̶2̶(<...>) // <- point of interest #2
+
+@Deprecated("", ReplaceWith("A"))
+class OldClass3
+
+val a = O̶l̶d̶C̶l̶a̶s̶s̶3̶() // <- point of interest #3
+```
+
+`ReplaceWith` inspection has to be aware of whether the class being deprecated has deprecations on its primary and secondary constructors.
+If a constructor has its own deprecation annotation with `ReplaceWith`, any of its calls can be only replaced according to this annotation but not the class annotation.
+If a constructor does not have its own deprecation annotation, all of its calls have to be replaced according to the class deprecation annotation.
+
+Expected and current behaviours coincide: </br>
+#1 to be replaced with `B(0)` </br>
+#2 is replaced with `A(<...>)` </br>
+#3 to be replaced with `A()`
 
 ## Corner case: property and method name collision
 
@@ -160,21 +305,19 @@ The ambiguity occurs if "new" method has the same name as some property.
 ``` Kotlin
 class A {
     @Deprecated("", replaceWith = ReplaceWith("A.foo"))
-    fun f (<f_args>) { <...> }
+    fun f (<f_args>) { TODO () }
 
     var foo : Int = 0
 
-    fun foo (<...>) { <...> }
+    fun foo (<...>) { TODO () }
 }
 
 a.f() // <- point of interest
 ```
 
-TODO: правда ли, что достаточно ли просто скобки написать?
-
-In this case if a property has to be used instead, the `ReplaceWith` expression ought to be enclosed in parentheses.
+In this case, if a property has to be used instead, the `ReplaceWith` expression ought to be enclosed in parentheses.
 In the example above `(A.foo)`.
-Otherwise, it has to be treated as function call, i.e. `A.foo(<f_args>)`
+Otherwise, it has to be treated as a function call, i.e. `A.foo(<f_args>)`.
 
 Note, the ambiguity only occurs if and only if `ReplaceWith` expression is just a name and yet it is ambiguous.
 
@@ -184,79 +327,8 @@ Note, the ambiguity only occurs if and only if `ReplaceWith` expression is just 
     It is necessary to provide syntax highlighting, code completion, and code analysis, i.e. *all usual inspections* and error checks for `ReplaceWith` expression as it is for any other code.
 2. It is expected that other inspections are aware of the code in `ReplaceWith` expressions.
     For example, it means that `findUsages` should also point to code inside `ReplaceWith` expression, `rename` should also rename identities inside a `ReplaceWith` body, etc.
-
-# Examples
-
-### Let ''out from nowhere'' [source](https://github.com/JetBrains/intellij-community/blob/master/plugins/kotlin/idea/tests/testData/quickfix/deprecatedSymbolUsage/argumentSideEffects/complexExpressionNotUsedSafeCall.kt)
-
-``` Kotlin
-class C {
-    @Deprecated("", ReplaceWith("newFun()"))
-    fun oldFun() {
-        newFun()
-    }
-}
-
-fun newFun() { <...> }
-
-fun getC(): C? = null
-
-fun foo() {
-    getC()?.o̶l̶d̶F̶u̶n̶() // <- point of interest
-}
-```
-
-Both current and expected behaviours correspond to the proposed specification and results in `getC()?.let { newFun() }`.
-
-### Argument initialization
-
-``` Kotlin
-package ppp
-fun bar(): Int = 0
-@Deprecated("", ReplaceWith("newFun()"))
-fun oldFun(p: Int = ppp.bar()) {
-    newFun()
-}
-fun newFun(){}
-fun foo() {
-    o̶l̶d̶F̶u̶n̶() // <- point of interest
-}
-```
-Current behaviour results in
-```
-    bar()
-    newFun()
-```
-
-This behaviour is expected and strongly corresponds to the proposed specification: since we consider the expression as a new body of `oldFun`, inliner should call `bar` here (it may have side effects).
-In this particular case, there is no sense to call `bar` but then we expect the inliner to use some kind of static analysis to decide this.
-AFAIK, the inliner is not able to handle such optimization (and it is too computationally expensive).
-
-### Function with extension receiver
-
-``` Kotlin
-fun test() {
-    KotlinAPI().f̶o̶o̶() // <- point of interest
-}
-
-class KotlinAPI {
-    fun bar() { <...> }
-}
-
-fun bar() { <...> }
-
-@Deprecated(
-    message = "deprecated",
-    replaceWith = ReplaceWith(expression = "this.bar()") // <- point of interest
-)
-fun KotlinAPI.foo() { <...> }
-```
-
-No matter if `this.bar()`, `this.bar`, `bar()`, or `bar` is used in the `ReplaceWith` expression, it is expected that `KotlinAPI().f̶o̶o̶()` will be replaced with `KotlinAPI().bar()`.
-This behaviour corresponds to the proposed specification.
-
-Current behaviour works as expected with `this.bar()` and `bar()`
-and just removes function call in case of `this.bar` and `bar`.
+3. *typealiases* </br>
+    Typealiases should be treated as one type (nothing specific to the concrete inspection), i.e. the `ReplaceWith` inspection has to be aware of them.
 
 
 # Current bugs \& proposals
@@ -284,11 +356,11 @@ The expected behaviour is to show the error in `replaceWith` expression and eith
 
 ``` Kotlin
 @Deprecated("Nice description here", replaceWith = ReplaceWith("isVisible = visible"))
-fun C.something(visible: Boolean)  { }
+fun C.something(visible: Boolean)  { TODO () }
 
-class C(){ var isVisible: Boolean = false }
+class C() { var isVisible: Boolean = false }
 
-fun use(){
+fun use() {
     C().s̶o̶m̶e̶t̶h̶i̶n̶g̶(false) // <- point of interest
 }
 ```
@@ -320,10 +392,25 @@ The expected behaviour corresponds to the proposed specification.
 
 ## $\bullet$ [KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
 
-Doesn't work now but the expected behaviour corresponds to the proposed specification.
+``` Kotlin
+var deprecated: Int = 42
+    @Deprecated("", ReplaceWith("other"))
+    get
+    @Deprecated("", ReplaceWith("other = value"))
+    set
 
-## $\bullet$ [KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
+var other = 33
 
+fun test() {
+    println(deprecated) // <- point of interest
+    deprecated = 33     // <- point of interest
+}
+```
+Expected: </br>
+#1 to be replaced with `println(other)` </br>
+#2 to be replaced with `other = 33`
+
+Currently, `ReplaceWith` quick-fix is not suggested for property accessors but it should and the expected behaviour corresponds to the proposed specification.
 
 ## $\bullet$ typealiases
 
@@ -409,9 +496,10 @@ Currently, it doesn't work now but it should, and the expected behaviour corresp
 
 # Possible Future Work
 
-TODO: написать больше про различные инстансы
+## `ReplaceWith` ancestors for specific use-cases
+
 1. [KT-56969 Use body of deprecated function instead of ReplaceWith()](https://youtrack.jetbrains.com/issue/KT-56969/Use-body-of-deprecated-function-instead-of-ReplaceWith) <br/>
-    The issue contains a special case of the ReplaceWith usage when the body of a deprecated method and ReplaceWith expression are identical.
+    The issue contains a special case of the `ReplaceWith` usage when the body of a deprecated method and `ReplaceWith` expression are identical.
     It looks like just forcing the inlining.
     I guess it can be supported by either introducing `$body$` to refer to the existing body or `ReplaceWithBody()`, i.e. a successor of `ReplaceWith`.
 2. In case of an empty ReplaceWith expression (or new code scope is empty, or something like `ReplaceWithRemove()` depending on concrete syntax), the call should be removed.
@@ -429,7 +517,7 @@ TODO: написать больше про различные инстансы
     ```
     Expected result: `setOf(1).joinToString()`
 
-## ReplaceWith body analysis and Concrete syntax suggestion
+## `ReplaceWith` body analysis and Concrete syntax suggestion
 
 Currently, `ReplaceWith` expression is not analysed at all.
 I propose to implement a separate IDE *Injection* which makes it possible to analyse `ReplaceWith` body.
