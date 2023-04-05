@@ -31,6 +31,7 @@
   - [$\\bullet$ typealiases](#bullet-typealiases)
   - [$\\bullet$ KTIJ-11679 ReplaceWith replacing method call to property set ends up removing the line of code](#bullet-ktij-11679-replacewith-replacing-method-call-to-property-set-ends-up-removing-the-line-of-code)
   - [$\\bullet$ KTIJ-6112 ReplaceWith quickfix is not suggested for property accessors](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-1)
+  - [$\\bullet$ KTIJ-12396 Deprecated ReplaceWith quickfix with unaryPlus removes the line of code](#bullet-ktij-12396-deprecated-replacewith-quickfix-with-unaryplus-removes-the-line-of-code)
 - [Discussion](#discussion)
 - [Possible Future Work](#possible-future-work)
   - [`ReplaceWith` ancestors for specific use-cases](#replacewith-ancestors-for-specific-use-cases)
@@ -59,7 +60,7 @@ IDE proposes to apply a quick-fix and replace the call of outdated function `g̶
 
 The most common ways of utilizing `ReplaceWith` are the following
 
-1. Update API and save the old interface at least temporarily.
+1. Semi-automatic library migration by updating API and saving the old interface at least temporarily.
 2. Replace one class (name) with another.
 3. Provide an IDE-guided way to learn a library's API by providing a deprecated API, which looks like something well-known by users, i.e., like it is done with the (well-known) Flow library in
    [kotlinx.couritines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/flow/Migration.kt).
@@ -71,8 +72,18 @@ The current `replaceWith` implementation has no specification, only a brief desc
 [2](https://www.baeldung.com/kotlin/deprecation),
 [3](https://todd.ginsberg.com/post/kotlin/deprecation/),
 [4](https://readyset.build/kotlin-deprecation-goodies-a35a397aa9b5)) from users.
-Moreover, its behaviour seems to be quite unexpected in some cases ([see below](#current-bugs--proposals)).
+Moreover, its behaviour seems to be quite unexpected in some cases.
+There is a set of tickets stating that `ReplaceWith` quick-fix simply removes the line of code ([KTIJ-12396](https://youtrack.jetbrains.com/issue/KTIJ-12396/Deprecated-ReplaceWith-quickfix-with-unaryPlus-removes-the-line-of-code),
+[KTIJ-11679](https://youtrack.jetbrains.com/issue/KTIJ-11679/ReplaceWith-replacing-method-call-to-property-set-ends-up-removing-the-line-of-code),
+[KTIJ-10798](https://youtrack.jetbrains.com/issue/KTIJ-10798/Deprecated-ReplaceWith-Constant-gets-replaced-with-nothing),
+[KTIJ-13679](https://youtrack.jetbrains.com/issue/KTIJ-13679/Deprecated-ReplaceWith-method-does-not-convert-to-a-property)
+) or doesn't work with properties ([KTIJ-12836](https://youtrack.jetbrains.com/issue/KTIJ-12836/ReplaceWith-cannot-replace-function-invocation-with-property-assignment),
+[KTIJ-6112](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
+), and others ([KTIJ-22042](https://youtrack.jetbrains.com/issue/KTIJ-22042/IDE-Go-to-declaration-navigates-to-the-wrong-deprecated-maxBy-function),
+[KTIJ-24906](https://youtrack.jetbrains.com/issue/KTIJ-24906/ReplaceWith-doesnt-add-several-imports)).
+Moreover, some issues show that specification is needed since users can't get "what exactly" `ReplaceWith` does, [ex. here](https://stackoverflow.com/questions/55101974/kotlin-deprecated-annotation-replaces-this-with-class-name/72799974#72799974).
 Thus, it's reasonable to provide a simple feature specification and fix its implementation according to the specification.
+Most of the tickets above or similar simplified examples are considered [below](#current-bugs--proposals) in the context of the proposed specification.
 
 # Proposed `replaceWith` inspection specification
 
@@ -480,6 +491,33 @@ Expected:</br>
 #2 to be replaced with `c.function (c.function())`
 
 Currently, it doesn't work now but it should, and the expected behaviour corresponds to the proposed specification.
+
+## $\bullet$ [KTIJ-12396 Deprecated ReplaceWith quickfix with unaryPlus removes the line of code](https://youtrack.jetbrains.com/issue/KTIJ-12396/Deprecated-ReplaceWith-quickfix-with-unaryPlus-removes-the-line-of-code)
+
+``` Kotlin
+@Deprecated("", ReplaceWith("+b"))
+fun foo(b: Bar) {}
+
+class Bar {
+    operator fun unaryPlus() {}
+}
+
+fun test() {
+    val b = Bar()
+    println(foo(b)) // <- point of interest #1
+    foo(b)          // <- point of interest #2
+}
+```
+
+Expected:</br>
+#1 to be replaced with `println(+b)` </br>
+#2 to be replaced with `+b`
+
+Current behaviour:</br>
+#1 is replaced with `println(+b)` </br>
+#2 is replaced with empty string
+
+The expected behaviour corresponds to the proposed specification.
 
 # Discussion
 
