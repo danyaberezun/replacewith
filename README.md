@@ -41,12 +41,12 @@
 # The story
 
 As a project or library evolves, its API may significantly change.
-`@Deprecated` annotation is widely used to encourage users to utilize the updated API or even more restrict some outdated API parts and force users to utilize the updated API.
-In order to minimize overheads and speed up the migration process in $\texttt{Kotlin}$ `@Deprecated` annotations may be equipped with `ReplaceWith` annotation property which defines a code fragment that shall be used instead of the deprecated entity.
+`@Deprecated` annotation is widely used to encourage users to utilize the updated API or, even, restrict some outdated API and force users to utilize the updated API.
+In order to minimize overhead and speed up the migration process in $\texttt{Kotlin}$ `@Deprecated` annotations may be equipped with `ReplaceWith` annotation property which defines a code fragment that should be used instead of the deprecated entity.
 The simplest example is as follows.
 
 ``` Kotlin
-@Deprecated("Use f() instead", replaceWith = ReplaceWith("f()"))
+@Deprecated(message = "Use f() instead", replaceWith = ReplaceWith("f()"))
 fun g(): Int = TODO()
 
 fun h () {
@@ -54,17 +54,17 @@ fun h () {
 }
 ```
 
-IDE proposes to apply a quick-fix and replace the call of outdated function `g̶()` with `f()`.
+IDE proposes to apply a quick-fix and replace the call of the outdated function `g̶()` with `f()`.
 
 ## Feature use-cases
 
-The most common ways of utilizing `ReplaceWith` are the following
+The most common ways of utilizing `ReplaceWith` are the following.
 
-1. Semi-automatic library migration by updating API and saving the old interface at least temporarily.
+1. Semi-automatic library migration by updating API and saving the old interface temporarily.
 2. Replace one class (name) with another.
-3. Provide an IDE-guided way to learn a library's API by providing a deprecated API, which looks like something well-known by users, i.e., like it is done with the (well-known) Flow library in
+3. Provide an IDE-guided way to learn a library's API by providing a deprecated API, which resembles something well-known by users, i.e. as it is done with the (well-known) Flow library in
    [kotlinx.couritines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/flow/Migration.kt).
-4. Having some Java library, one has implemented a Kotlin-idiomatic API for it; in this case, `ReplaceWith` can be used to force and/or help Kotlin users to use this API.
+4. If there is a Kotlin-idiomatic API for some Java library, `ReplaceWith` can be used to force and/or help Kotlin users to use this API.
 
 # The problem
 
@@ -72,8 +72,8 @@ The current `replaceWith` implementation has no specification, only a brief desc
 [2](https://www.baeldung.com/kotlin/deprecation),
 [3](https://todd.ginsberg.com/post/kotlin/deprecation/),
 [4](https://readyset.build/kotlin-deprecation-goodies-a35a397aa9b5)) from users.
-Moreover, its behaviour seems to be quite unexpected in some cases.
-There is a set of tickets stating that `ReplaceWith` quick-fix simply removes the line of code ([KTIJ-12396](https://youtrack.jetbrains.com/issue/KTIJ-12396/Deprecated-ReplaceWith-quickfix-with-unaryPlus-removes-the-line-of-code),
+Moreover, its behaviour is rather unexpected in some cases.
+There are tickets stating that `ReplaceWith` quick-fix simply removes the line of code ([KTIJ-12396](https://youtrack.jetbrains.com/issue/KTIJ-12396/Deprecated-ReplaceWith-quickfix-with-unaryPlus-removes-the-line-of-code),
 [KTIJ-11679](https://youtrack.jetbrains.com/issue/KTIJ-11679/ReplaceWith-replacing-method-call-to-property-set-ends-up-removing-the-line-of-code),
 [KTIJ-10798](https://youtrack.jetbrains.com/issue/KTIJ-10798/Deprecated-ReplaceWith-Constant-gets-replaced-with-nothing),
 [KTIJ-13679](https://youtrack.jetbrains.com/issue/KTIJ-13679/Deprecated-ReplaceWith-method-does-not-convert-to-a-property)
@@ -81,17 +81,17 @@ There is a set of tickets stating that `ReplaceWith` quick-fix simply removes th
 [KTIJ-6112](https://youtrack.jetbrains.com/issue/KTIJ-6112/ReplaceWith-quickfix-is-not-suggested-for-property-accessors)
 ), and others ([KTIJ-22042](https://youtrack.jetbrains.com/issue/KTIJ-22042/IDE-Go-to-declaration-navigates-to-the-wrong-deprecated-maxBy-function),
 [KTIJ-24906](https://youtrack.jetbrains.com/issue/KTIJ-24906/ReplaceWith-doesnt-add-several-imports)).
-Moreover, some issues show that specification is needed since users can't get "what exactly" `ReplaceWith` does, [ex. here](https://stackoverflow.com/questions/55101974/kotlin-deprecated-annotation-replaces-this-with-class-name/72799974#72799974).
-Thus, it's reasonable to provide a simple feature specification and fix its implementation according to the specification.
-Most of the tickets above or similar simplified examples are considered [below](#current-bugs--proposals) in the context of the proposed specification.
+Moreover, some issues show that specification is needed since users don't understand "what exactly" `ReplaceWith` does, [ex. here](https://stackoverflow.com/questions/55101974/kotlin-deprecated-annotation-replaces-this-with-class-name/72799974#72799974).
+Thus, it's reasonable to provide a simple feature specification and fix the implementation according to the specification.
+Most of the tickets mentioned are discussed [below](#current-bugs--proposals) in the context of the proposed specification, sometimes with simplified examples.
 
 # Proposed `replaceWith` inspection specification
 
 1. *Behaviour for functions, methods, and constructors (FMC).* <br />
     Consider the replacement expression as a new body of the function/method/constructor (FMC), then inline on a call site.
     + In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as a shortcut for a call `A::f(<args>)` where `args` are the same as in FMC call.
-    + This also means that all arguments (by name), `this` and as well as access to properties and methods through it are available inside the `ReplaceWith` expression just like in a usual method's body.
-    + Access to all identities from new `ReplaceWith` imports is the same as if they were imported in the standard way.
+    + This also means that all arguments (by name), `this` and as well as access to properties and methods through it are available inside the `ReplaceWith` expression just like in a normal method's body.
+    + Access to all identities from new `ReplaceWith` imports is the same as if they were imported normally.
 2. *Behaviour for classes.* <br />
     First, it is assumed that in the case of classes replacing one class name with another existing class only is possible.
     The expected behaviour is just to replace the old class name with a new class name keeping the context (class paths).
@@ -106,7 +106,7 @@ Most of the tickets above or similar simplified examples are considered [below](
 
 ### Pros:
 1. *Simplicity*. The specification is quite simple, easy to describe, and, what is most important, easy to understand by users.
-2. The replacement expression is a *usual valid Kotlin code*; thus it can be analysed as any other code and checked for errors.
+2. The replacement expression is a *normal valid Kotlin code*; thus it can be analysed as any other code and checked for errors.
 3. It seems to be that most of the use cases should be already covered by the inliner.
 
 ### Cons:
