@@ -45,7 +45,7 @@ As a project or library evolves, its API may significantly change.
 In order to minimize overhead and speed up the migration process in $\texttt{Kotlin}$ `@Deprecated` annotations may be equipped with `ReplaceWith` annotation property which defines a code fragment that should be used instead of the deprecated entity.
 The simplest example is as follows.
 
-``` Kotlin
+```Kotlin
 @Deprecated(message = "Use f() instead", replaceWith = ReplaceWith("f()"))
 fun g(): Int = TODO()
 
@@ -90,7 +90,7 @@ Most of the tickets mentioned are discussed [below](#current-bugs--proposals) in
 1. *Behaviour for functions, methods, and constructors (FMC).* <br />
     Regard the replacement expression as a new body of the function/method/constructor (FMC), then inline on a call site, as illustrated by the following example.
 
-    ```Kotlin
+```Kotlin
 @Deprecated(
     message = "old is deprecated, use new instead",
     replaceWith = ReplaceWith(expression = "new(x, y, x*y)")
@@ -102,17 +102,17 @@ fun new(x : Int, y : Int, product : Int) { TODO () }
 fun foo() {
     o̶l̶d̶(7, 42) // -> new(7, 42, 7*42)
 }
-    ```
+```
 
-    In this example there is the function `old` with two arguments `x` and `y` which is replaced with a call to the function `new` with three arguments.
-    Note that the replacement expression passes the arguments of the `old` function to the `new` function and also uses their product as the third argument.
-    Applying the replaceWith inspection corresponds to considering the replacement expression to be a body of the deprecated function: `fun old(x : Int, y : Int) {new(x, y, x*y)}` and then inlining its body on call site.
-    Thus, the call `old(7, 42)` is replaced with `new(7, 42, 7*42)`, its arguments are correctly passed.
+In this example there is the function `old` with two arguments `x` and `y` which is replaced with a call to the function `new` with three arguments.
+Note that the replacement expression passes the arguments of the `old` function to the `new` function and also uses their product as the third argument.
+Applying the replaceWith inspection corresponds to considering the replacement expression to be a body of the deprecated function: `fun old(x : Int, y : Int) {new(x, y, x*y)}` and then inlining its body on call site.
+Thus, the call `old(7, 42)` is replaced with `new(7, 42, 7*42)`, its arguments are correctly passed.
 
-    Besides using the arguments of the deprecated function, it is also allowed to use `this` as well as properties and methods, accessible in the deprecated function.
-    Specifying the list of imports in the replaceWith grants access to identifiers from them.
+Besides using the arguments of the deprecated function, it is also allowed to use `this` as well as properties and methods, accessible in the deprecated function.
+Specifying the list of imports in the replaceWith grants access to identifiers from them.
 
-    In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as a shortcut for a call `A::f(<args>)` where `args` are the same as in FMC call.
+In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as a shortcut for a call `A::f(<args>)` where `args` are the same as in FMC call.
 
 2. *Behaviour for classes.* <br />
     It is assumed that in the case of replacing one class name with another, only the use of an existing class is permitted.
