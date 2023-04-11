@@ -100,11 +100,11 @@ fun old(x : Int, y : Int) { TODO () }
 fun new(x : Int, y : Int, product : Int) { TODO () }
 
 fun foo() {
-    o̶l̶d̶(7, 42) // -> new(7, 42, 7*42)
+    o̶l̶d̶(7, 42) // <- pointy of interest
 }
 ```
 
-In this example there is the function `old` with two arguments `x` and `y` which is replaced with a call to the function `new` with three arguments.
+In this example, there is the function `old` with two arguments `x` and `y` which is replaced with a call to the function `new` with three arguments.
 Note that the replacement expression passes the arguments of the `old` function to the `new` function and also uses their product as the third argument.
 Applying the replaceWith inspection corresponds to considering the replacement expression to be a body of the deprecated function: `fun old(x : Int, y : Int) {new(x, y, x*y)}` and then inlining its body on call site.
 Thus, the call `old(7, 42)` is replaced with `new(7, 42, 7*42)`, its arguments are correctly passed.
@@ -134,7 +134,7 @@ In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as
 ### Cons:
 1. It narrows down the problem of `replaceWith` implementation to inlining; **maybe** this is asking too much of the inliner.
 2. The proposed `replaceWith` specification is indeed quite simple.
-However it requires a user to understand how inliner works.
+However, it requires a user to understand how inliner works.
 This observation rises an interesting question:
 ``**Does the inliner have a good specification**?''
 
@@ -157,7 +157,7 @@ fun new() { TODO () }
 fun getC(): C? = null
 
 fun foo() {
-    getC()?.o̶l̶d̶() // -> getC()?.let { new() }
+    getC()?.o̶l̶d̶() // <- point of interest
 }
 ```
 
@@ -197,7 +197,7 @@ fun foo() {
 
 Since we consider the expression as the new body of `old`, inliner should call `bar` here because it may have some side effects.
 In this particular case, there is no reason to call `bar` but then the inliner should use some kind of static analysis to decide this.
-AFAIK, the inliner is not able to handle such optimization, and it may also be too computationally expensive.
+AFAIK, the inliner is not able to handle such optimization and it may also be too computationally expensive.
 
 The current behaviour and the expected behaviour coincide and correspond to the proposed specification.
 
@@ -295,7 +295,7 @@ Inlining in this case results with ```x.set(x.get())``` which has a type Type mi
 Required: Nothing
 Found: Any?.
 ```
-The reason is that the inliner is not able to understand that two types are equal.
+The reason is that the inliner is not able to understand that the two types are equal.
 The correct code is ```x.let {it.set(it.get() as Nothing)}```
 
 ## Corner case: ''separate/conflicting'' class name and methods replacements
@@ -312,7 +312,7 @@ var a = A̶().o̶l̶d̶() // <- point of interest
 ```
 
 In the current proposal, these two deprecations are two separate inspections.
-Thus, no conflict arises here, and the user controlles which scenario to choose.
+Thus, no conflict arises here, and the user controls which scenario to choose.
 
 Possible scenarios:
 1. First, replace `old` with `new`, then replace the class name resulting in `B.new()`
@@ -339,7 +339,7 @@ class OldClass3
 val a = O̶l̶d̶C̶l̶a̶s̶s̶3̶() // <- point of interest #3
 ```
 
-`ReplaceWith` inspection has to be aware whether the primary and secondary constructors of the class being deprecated are also deprecated.
+`ReplaceWith` inspection has to be aware of whether the primary and secondary constructors of the class being deprecated are also deprecated.
 If a constructor is annotated as deprecated and has a `ReplaceWith` expression, any of its calls can only be replaced according to this annotation and not the class annotation.
 If a constructor does not have its own deprecation annotation, all of its calls have to be replaced according to the class deprecation annotation.
 
@@ -598,7 +598,7 @@ The expected behaviour corresponds to the proposed specification.
 
 Currently, `ReplaceWith` expression is not analysed at all.
 I propose to implement a separate IDE *Injection* which makes it possible to analyse `ReplaceWith` body.
-In this case, the expression is stored as an expression but appear to a user as a normal Kotlin code.
+In this case, the expression is stored as an expression but appears to a user as a normal Kotlin code.
 I suggest concrete syntax to be an explicit scope instead of an expression, such as:
 
 ```Kotlin
@@ -631,4 +631,4 @@ Both approaches are significantly more complicated and error-prone.
 
 In $\texttt{Rider}$ functionality similar to `ReplaceWith` [can be implemented with `[CodeTemplate]` attribute](https://www.jetbrains.com/help/rider/Code_Analysis__Find_and_Update_Obsolete_APIs.html): (c) </br>
 *As the API author, you need to mark the obsolete type or member with the [CodeTemplate] attribute from JetBrains. Annotations where you can specify a search pattern to match the old API and a replacement pattern for it.*
-This approach seems to be more powerful but more complex, less transparent, and that far from a custom inspection implementation.
+This approach seems to be more powerful but more complex, less transparent, and not so far away from a custom inspection implementation.
