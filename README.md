@@ -9,7 +9,7 @@
 - [The story](#the-story)
   - [Feature use-cases](#feature-use-cases)
 - [The problem](#the-problem)
-- [Proposed `replaceWith` inspection specification](#proposed-replacewith-inspection-specification)
+- [Proposed `ReplaceWith` inspection specification](#proposed-replacewith-inspection-specification)
     - [Pros:](#pros)
     - [Cons:](#cons)
 - [Examples](#examples)
@@ -68,7 +68,7 @@ The most common ways of utilizing `ReplaceWith` are the following.
 
 # The problem
 
-The current `replaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests]([id-com-tests](https://github.com/JetBrains/intellij-community/tree/master/plugins/kotlin/idea/tests/testData/quickfix/deprecatedSymbolUsage)), and several blog posts ([1](https://dev.to/mreichelt/the-hidden-kotlin-gem-you-didn-t-think-you-ll-love-deprecations-with-replacewith-3blo),
+The current `ReplaceWith` implementation has no specification, only a brief description in [API](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-replace-with/), a set of [tests]([id-com-tests](https://github.com/JetBrains/intellij-community/tree/master/plugins/kotlin/idea/tests/testData/quickfix/deprecatedSymbolUsage)), and several blog posts ([1](https://dev.to/mreichelt/the-hidden-kotlin-gem-you-didn-t-think-you-ll-love-deprecations-with-replacewith-3blo),
 [2](https://www.baeldung.com/kotlin/deprecation),
 [3](https://todd.ginsberg.com/post/kotlin/deprecation/),
 [4](https://readyset.build/kotlin-deprecation-goodies-a35a397aa9b5)) from users.
@@ -85,7 +85,7 @@ Moreover, some issues show that specification is needed since users do not under
 Thus, it's reasonable to provide a simple feature specification and fix the implementation according to the specification.
 Most of the tickets mentioned are discussed [below](#current-bugs--proposals) in the context of the proposed specification, sometimes with simplified examples.
 
-# Proposed `replaceWith` inspection specification
+# Proposed `ReplaceWith` inspection specification
 
 1. *Behaviour for functions, methods, and constructors (FMC).* <br />
     Regard the replacement expression as a new body of the function/method/constructor (FMC), then inline on a call site, as illustrated by the following example.
@@ -106,11 +106,11 @@ fun foo() {
 
 In this example, there is the function `old` with two arguments `x` and `y` which is replaced with a call to the function `new` with three arguments.
 Note that the replacement expression passes the arguments of the `old` function to the `new` function and also uses their product as the third argument.
-Applying the replaceWith inspection corresponds to considering the replacement expression to be a body of the deprecated function: `fun old(x : Int, y : Int) {new(x, y, x*y)}` and then inlining its body on call site.
+Applying the ReplaceWith inspection corresponds to considering the replacement expression to be a body of the deprecated function: `fun old(x : Int, y : Int) {new(x, y, x*y)}` and then inlining its body on call site.
 Thus, the call `old(7, 42)` is replaced with `new(7, 42, 7*42)`, its arguments are correctly passed.
 
 Besides using the arguments of the deprecated function, it is also allowed to use `this` as well as properties and methods, accessible in the deprecated function.
-Specifying the list of imports in the replaceWith grants access to identifiers from them.
+Specifying the list of imports in the ReplaceWith grants access to identifiers from them.
 
 In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as a shortcut for a call `A::f(<args>)` where `args` are the same as in FMC call.
 
@@ -121,10 +121,10 @@ In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as
     NB, this case is error-prone.
 3. *Property/variable/field replacement.* <br />
    1. *Replace with another property/var/field.* <br />
-    Straightforward replacement (Of cause it is assumed that the inliner is able to distinguish `get` and `set`).
+    Straightforward replacement (it is assumed that the inliner is able to distinguish `get` and `set`).
    2. *`get` and/or `set` replacement.* <br />
     Straightforward, the same as #1.
-    Also, see [a current bug](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-2)
+    Also, see [a current bug](#bullet-ktij-6112-replacewith-quickfix-is-not-suggested-for-property-accessors-2).
 
 ### Pros:
 1. *Simplicity*. The specification is quite simple, easy to describe, and, most importantly, easy to understand by users.
@@ -132,8 +132,8 @@ In case the FMC replacement expression is just a name, i.e., `A::f`, treat it as
 3. Most of the use cases should be already covered by the inliner.
 
 ### Cons:
-1. It narrows down the problem of `replaceWith` implementation to inlining; **maybe** this is asking too much of the inliner.
-2. The proposed `replaceWith` specification is indeed quite simple.
+1. It narrows down the problem of `ReplaceWith` implementation to inlining; **maybe** this is asking too much of the inliner.
+2. The proposed `ReplaceWith` specification is indeed quite simple.
 However, it requires a user to understand how inliner works.
 This observation rises an interesting question:
 ``**Does the inliner have a good specification**?''
@@ -271,7 +271,7 @@ fun newX() {}
 The expected behaviour is to replace `x.oldX()` with `x.newX()` since `newX()` corresponds to `this.newX()` in Kotlin code.
 However, the method `newX` is private, and cannot be accessed at the call site.
 
-$\bullet$ Another example (no connection with `replaceWith`) of code when inlining is impossible:
+$\bullet$ Another example (no connection with `ReplaceWith`) of code when inlining is impossible:
 ``` Kotlin
 class Box<T>(private var i : T) {
     inline fun f() {
@@ -560,7 +560,7 @@ The expected behaviour corresponds to the proposed specification.
 # Discussion
 
 1. Should ReplaceWith replace constructors when replacing the class name?
-2. The more important question is **When should we suggest class name replacement?** if it is specified with `replaceWith`. <br/>
+2. The more important question is **When should we suggest class name replacement?** if it is specified with `ReplaceWith`. <br/>
     In my opinion, class name replacement is a distinct case but users use it, so we have to specify the behaviour clearly and its connection with the ``possibly conflicting'' methods replacements or potential errors.
 3. What is the expected IDE behaviour when ReplaceWith leads to an error in the resulting code?
     What if replacing all get errors only in some cases?
