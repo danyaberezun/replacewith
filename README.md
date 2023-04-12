@@ -100,7 +100,7 @@ fun old(x : Int, y : Int) { TODO () }
 fun new(x : Int, y : Int, product : Int) { TODO () }
 
 fun foo() {
-    o̶l̶d̶(7, 42) // <- pointy of interest
+    o̶l̶d̶(7, 42) // <- point of interest
 }
 ```
 
